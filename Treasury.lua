@@ -1,6 +1,6 @@
 _addon.name = 'Treasury'
 _addon.author = 'Ihina'
-_addon.version = '1.2.1.1'
+_addon.version = '1.3.0.1'
 _addon.commands = {'treasury', 'tr'}
 
 res = require('resources')
@@ -48,21 +48,30 @@ local flatten = function(s)
 end
 
 local extract_ids = function(settings_table, key)
+    local item_list = {}
     local valid = settings_table[key]:filter(function(name)
         local found = all_ids[name:lower()] ~= nil
         if not found then
             print('Treasury: Item "%s" not found in %s list.':format(name, key))
+        else
+            item_list[#item_list + 1] = '[' .. name .. ']'
+            if #item_list % 8 == 0 then
+                item_list[#item_list + 1] = '\n'
+            end
         end
         return found
     end)
+
+    if settings_table.Verbose then
+        if #item_list > 0 then
+            print('Treasury: %d %s items added:\n %s':format(#item_list, key, table.concat(item_list, ' ')))
+        else
+            print('Treasury: No %s items added!':format(key))
+        end
+    end
+
     return flatten(valid:map(table.get+{all_ids} .. string.lower))
 end
-
-config.register(settings, function(settings_table)
-    code.pass = extract_ids(settings_table, 'Pass')
-    code.lot = extract_ids(settings_table, 'Lot')
-    code.drop = extract_ids(settings_table, 'Drop')
-end)
 
 lotpassdrop_commands = T{
     lot = 'Lot',
@@ -244,7 +253,31 @@ windower.register_event('ipc message', function(msg)
     end
 end)
 
-windower.register_event('load', force_check:cond(table.get-{'logged_in'} .. windower.ffxi.get_info))
+windower.register_event('load', function (...)
+    force_check:cond(table.get-{'logged_in'} .. windower.ffxi.get_info)
+
+    local player = windower.ffxi.get_player()
+    if player and player.name then
+        settings = config.load('./data/%s.xml':format(player.name), defaults)
+
+        code.pass = extract_ids(settings, 'Pass')
+        code.lot = extract_ids(settings, 'Lot')
+        code.drop = extract_ids(settings, 'Drop')
+    end
+end)
+
+windower.register_event('login', function (...)
+    coroutine.sleep(2)
+
+    local player = windower.ffxi.get_player()
+    if player and player.name then
+        settings = config.load('./data/%s.xml':format(player.name), defaults)
+
+        code.pass = extract_ids(settings, 'Pass')
+        code.lot = extract_ids(settings, 'Lot')
+        code.drop = extract_ids(settings, 'Drop')
+    end
+end)
 
 windower.register_event('addon command', function(command1, command2, ...)
     local args = L{...}
