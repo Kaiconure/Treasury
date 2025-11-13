@@ -316,7 +316,7 @@ windower.register_event('addon command', function(command1, command2, ...)
 
         elseif command2 == 'list' then
             log(command1 .. ':')
-            for item in settings[command1]:it() do
+            for item in settings[command1]:sort():it() do
                 log('    ' .. item)
             end
 
